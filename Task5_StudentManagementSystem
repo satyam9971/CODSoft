@@ -1,0 +1,186 @@
+import java.awt.BorderLayout;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.util.*;
+
+class Student implements Serializable {
+    private String name;
+    private String rollNumber;
+    private String grade;
+
+    public Student(String name, String rollNumber, String grade) {
+        this.name = name;
+        this.rollNumber = rollNumber;
+        this.grade = grade;
+    }
+
+    public String getName() { return name; }
+    public String getRollNumber() { return rollNumber; }
+    public String getGrade() { return grade; }
+    public void setName(String name) { this.name = name; }
+    public void setGrade(String grade) { this.grade = grade; }
+
+    @Override
+    public String toString() {
+        return "Name: " + name + ", Roll No: " + rollNumber + ", Grade: " + grade;
+    }
+}
+
+class StudentManagementSystem {
+    private List<Student> students;
+    private final String FILE_NAME = "students.dat";
+
+    public StudentManagementSystem() {
+        loadFromFile();
+    }
+
+    public String addStudent(Student student) {
+        for (Student s : students) {
+            if (s.getRollNumber().equals(student.getRollNumber())) {
+                return "Student with this roll number already exists.";
+            }
+        }
+        students.add(student);
+        saveToFile();
+        return "Student added successfully.";
+    }
+
+    public String removeStudent(String rollNumber) {
+        boolean removed = students.removeIf(s -> s.getRollNumber().equals(rollNumber));
+        saveToFile();
+        return removed ? "Student removed." : "Student not found.";
+    }
+
+    public Student searchStudent(String rollNumber) {
+        for (Student s : students) {
+            if (s.getRollNumber().equals(rollNumber)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    public String editStudent(String rollNumber, String newName, String newGrade) {
+        for (Student s : students) {
+            if (s.getRollNumber().equals(rollNumber)) {
+                s.setName(newName);
+                s.setGrade(newGrade);
+                saveToFile();
+                return "Student updated.";
+            }
+        }
+        return "Student not found.";
+    }
+
+    public List<Student> getAllStudents() {
+        students.sort(Comparator.comparing(Student::getRollNumber));
+        return students;
+    }
+
+    private void saveToFile() {
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
+            out.writeObject(students);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadFromFile() {
+        try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(FILE_NAME))) {
+            students = (List<Student>) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            students = new ArrayList<>();
+        }
+    }
+}
+
+public class StudentGUI extends JFrame {
+    private StudentManagementSystem sms;
+    private JTextField nameField, rollField, gradeField;
+    private JTextArea outputArea;
+
+    public StudentGUI() {
+        sms = new StudentManagementSystem();
+        setTitle("Student Management System");
+        setSize(500, 450);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        JPanel inputPanel = new JPanel(new GridLayout(4, 2));
+        inputPanel.add(new JLabel("Name:"));
+        nameField = new JTextField();
+        inputPanel.add(nameField);
+        inputPanel.add(new JLabel("Roll No:"));
+        rollField = new JTextField();
+        inputPanel.add(rollField);
+        inputPanel.add(new JLabel("Grade:"));
+        gradeField = new JTextField();
+        inputPanel.add(gradeField);
+
+        JButton addBtn = new JButton("Add");
+        JButton removeBtn = new JButton("Remove");
+        JButton searchBtn = new JButton("Search");
+        JButton editBtn = new JButton("Edit");
+        JButton displayBtn = new JButton("Display All");
+
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 5));
+        buttonPanel.add(addBtn);
+        buttonPanel.add(removeBtn);
+        buttonPanel.add(searchBtn);
+        buttonPanel.add(editBtn);
+        buttonPanel.add(displayBtn);
+
+        outputArea = new JTextArea(10, 40);
+        outputArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(outputArea);
+
+        add(inputPanel, BorderLayout.NORTH);
+        add(buttonPanel, BorderLayout.CENTER);
+        add(scrollPane, BorderLayout.SOUTH);
+
+        // Button listeners
+        addBtn.addActionListener(e -> {
+            String result = sms.addStudent(new Student(nameField.getText(), rollField.getText(), gradeField.getText()));
+            outputArea.setText(result);
+        });
+
+        removeBtn.addActionListener(e -> {
+            String result = sms.removeStudent(rollField.getText());
+            outputArea.setText(result);
+        });
+
+        searchBtn.addActionListener(e -> {
+            Student s = sms.searchStudent(rollField.getText());
+            outputArea.setText(s != null ? s.toString() : "Student not found.");
+        });
+
+        editBtn.addActionListener(e -> {
+            String result = sms.editStudent(rollField.getText(), nameField.getText(), gradeField.getText());
+            outputArea.setText(result);
+        });
+
+        displayBtn.addActionListener(e -> {
+            List<Student> list = sms.getAllStudents();
+            StringBuilder sb = new StringBuilder();
+            for (Student s : list) {
+                sb.append(s).append("\n");
+            }
+            outputArea.setText(sb.toString());
+        });
+
+        setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        new StudentGUI();
+    }
+}
